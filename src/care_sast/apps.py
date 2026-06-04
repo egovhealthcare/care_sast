@@ -6,7 +6,7 @@ PLUGIN_NAME = "care_sast"
 
 class Care_sastConfig(AppConfig):
     name = PLUGIN_NAME
-    verbose_name = _("Care SAST")
+    verbose_name = _("CARE SAST")
 
     def ready(self):
-        import care_sast.signals  # noqa F401
+        pass

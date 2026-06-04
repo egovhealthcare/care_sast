@@ -16,10 +16,6 @@ from care_sast.services.specs.gateway import CallbackRequestData
 logger = logging.getLogger(__name__)
 
 
-def _response(success: bool, errors: list[str], data: dict | None):
-    return {"Success": success, "Errors": errors, "Data": data}
-
-
 class CallbackViewSet(EMRBaseViewSet):
     authentication_classes = []
     permission_classes = []
@@ -28,17 +24,17 @@ class CallbackViewSet(EMRBaseViewSet):
     @action(
         detail=False,
         methods=["POST"],
-        url_path=r"(?P<hosp_code>[^/.]+)/(?P<ref_no>[^/.]+)",
+        url_path=r"submission/(?P<hosp_code>[^/.]+)/(?P<ref_no>[^/.]+)",
     )
     def handle(self, request, hosp_code=None, ref_no=None, *args, **kwargs):
         submission = SASTSubmission.objects.filter(external_id=ref_no).first()
         if submission is None:
             return Response(
-                _response(
-                    success=False,
-                    errors=[f"No submission found for ref no {ref_no}"],
-                    data=None,
-                ),
+                {
+                    "success": False,
+                    "errors": [f"No submission found for ref no {ref_no}"],
+                    "data": None,
+                },
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -46,12 +42,14 @@ class CallbackViewSet(EMRBaseViewSet):
 
         submission.hmis_id = body.hmis_id
         submission.ab_ark_id = body.ab_ark_id
+        submission.response = body.model_dump(mode="json")
         submission.status = SASTSubmissionStatusChoices.COMPLETED
         submission.completed_at = timezone.now()
         submission.save(
             update_fields=[
                 "hmis_id",
                 "ab_ark_id",
+                "response",
                 "status",
                 "completed_at",
                 "modified_date",
@@ -59,13 +57,13 @@ class CallbackViewSet(EMRBaseViewSet):
         )
 
         return Response(
-            _response(
-                success=True,
-                errors=[],
-                data={
+            {
+                "success": True,
+                "errors": [],
+                "data": {
                     "message": "Record saved successfully.",
                     "Hmis_ID": submission.hmis_id,
                 },
-            ),
+            },
             status=status.HTTP_200_OK,
         )

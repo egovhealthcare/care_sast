@@ -22,7 +22,7 @@ class GatewayService:
         domain = plugin_settings.BACKEND_DOMAIN
         if not domain.startswith(("http://", "https://")):
             domain = f"https://{domain}"
-        return f"{domain.rstrip('/')}/api/care_sast/callback/{hosp_code}/{ref_no}"
+        return f"{domain.rstrip('/')}/api/care_sast/callback/submission/"
 
     def _build_payload(self, submission: SASTSubmission) -> dict:
         payload = SASTSubmissionPayloadSpec(**submission.payload).to_gateway_dict()
@@ -71,7 +71,6 @@ class GatewayService:
             ),
         )
 
-        submission.response = response_data
         if result.success:
             submission.status = SASTSubmissionStatusChoices.SUBMITTED
             submission.submitted_at = timezone.now()
@@ -84,7 +83,6 @@ class GatewayService:
 
         submission.save(
             update_fields=[
-                "response",
                 "status",
                 "submitted_at",
                 "errors",
