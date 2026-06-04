@@ -26,14 +26,23 @@ class GatewayService:
 
     def _build_payload(self, submission: SASTSubmission) -> dict:
         payload = SASTSubmissionPayloadSpec(**submission.payload).to_gateway_dict()
+
+        hospital = submission.facility.sast_hospitals.first()
+        hosp_code = hospital.code
+
+        sast_user = hospital.users.filter(care_user=submission.created_by).first()
+        user_id = sast_user.user_id if sast_user else plugin_settings.CARE_SAST_GATEWAY_USER_ID
+        password = sast_user.password if sast_user else plugin_settings.CARE_SAST_GATEWAY_PASSWORD
+
         payload.update(
             {
+                "HospCode": hosp_code,
                 "Refno": submission.ref_no,
                 "TpaCode": submission.tpa_code,
                 "Health_scheme": submission.health_scheme,
-                "Userid": plugin_settings.CARE_SAST_GATEWAY_USER_ID,
-                "Password": plugin_settings.CARE_SAST_GATEWAY_PASSWORD,
-                "CallBack_Url": self._callback_url(payload.get("HospCode", ""), submission.ref_no),
+                "Userid": user_id,
+                "Password": password,
+                "CallBack_Url": self._callback_url(hosp_code, submission.ref_no),
             }
         )
         return payload

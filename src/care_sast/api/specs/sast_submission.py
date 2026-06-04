@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404
 from pydantic import UUID4, BaseModel, Field, field_validator
 from rest_framework.exceptions import ValidationError
 
+from care_sast.models.sast_hospital import SASTHospital
 from care_sast.models.sast_submission import SASTSubmission
 
 
@@ -20,7 +21,6 @@ class SASTSubmissionPayloadSpec(BaseModel):
     :meth:`to_gateway_dict`) produces the gateway-ready payload.
     """
 
-    hosp_code: str = Field(serialization_alias="HospCode")
     patient_name: str = Field(serialization_alias="PatientName")
     age: int = Field(serialization_alias="Age")
     age_time: str = Field(serialization_alias="AGETIME")
@@ -137,6 +137,8 @@ class SASTSubmissionCreateSpec(SASTSubmissionBaseSpec):
     def validate_facility(cls, value):
         if not Facility.objects.filter(external_id=value).exists():
             raise ValidationError("Facility not found")
+        if not SASTHospital.objects.filter(facility__external_id=value).exists():
+            raise ValidationError("Facility is not mapped to a SAST hospital")
         return value
 
     @field_validator("patient")
