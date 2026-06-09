@@ -30,9 +30,17 @@ class SASTSubmission(EMRBaseModel):
     )
     submitted_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
-    errors = models.JSONField(default=list, null=True, blank=True)
-    response = models.JSONField(default=dict, null=True, blank=True)
+
+    gateway_payload = models.JSONField(null=True, blank=True)
+    gateway_response = models.JSONField(null=True, blank=True)
+    callback_response = models.JSONField(null=True, blank=True)
 
     @property
     def ref_no(self) -> str:
         return self.external_id.hex
+
+    @property
+    def errors(self) -> list:
+        if not self.gateway_response:
+            return []
+        return self.gateway_response.get("Errors", [])

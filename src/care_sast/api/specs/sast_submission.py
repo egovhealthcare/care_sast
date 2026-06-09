@@ -185,5 +185,7 @@ class SASTSubmissionListSpec(SASTSubmissionBaseSpec):
 
 class SASTSubmissionRetrieveSpec(SASTSubmissionListSpec):
     payload: dict | None = None
+    gateway_payload: dict | None = None
+    gateway_response: dict | None = None
+    callback_response: dict | None = None
     errors: list | None = None
-    response: dict | None = None

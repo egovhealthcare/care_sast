@@ -47,9 +47,16 @@ class GatewayService:
         )
         return payload
 
+    def _redact_payload(self, payload: dict) -> dict:
+        redacted = dict(payload)
+        if redacted.get("Password"):
+            redacted["Password"] = "***"
+        return redacted
+
     def patient_submit(self, submission: SASTSubmission) -> SASTSubmission:
         url = f"{self.base_endpoint}/PatienteBasicDetails"
         payload = self._build_payload(submission)
+        submission.gateway_payload = self._redact_payload(payload)
 
         try:
             response = requests.post(
@@ -57,13 +64,49 @@ class GatewayService:
                 json=payload,
                 timeout=plugin_settings.CARE_SAST_GATEWAY_API_TIMEOUT,
             )
-            response.raise_for_status()
-            response_data = response.json()
         except requests.RequestException as exc:
-            logger.exception("SAST gateway submission failed for %s", submission.ref_no)
+            exc_response = exc.response
+            status_code = exc_response.status_code if exc_response is not None else None
+            response_text = exc_response.text if exc_response is not None else None
+            logger.exception(
+                "SAST gateway submission failed for %s (HTTP %s): %s",
+                submission.ref_no,
+                status_code,
+                response_text,
+            )
             submission.status = SASTSubmissionStatusChoices.FAILED
-            submission.errors = [str(exc)]
-            submission.save(update_fields=["status", "errors", "modified_date"])
+            submission.gateway_response = {
+                "Success": False,
+                "Errors": [str(exc)],
+                "Data": None,
+                "StatusCode": status_code,
+                "RawResponse": response_text,
+            }
+            submission.save(
+                update_fields=["status", "gateway_payload", "gateway_response", "modified_date"]
+            )
+            return submission
+
+        try:
+            response_data = response.json()
+        except ValueError:
+            logger.exception(
+                "SAST gateway returned a non-JSON response for %s (HTTP %s): %s",
+                submission.ref_no,
+                response.status_code,
+                response.text,
+            )
+            submission.status = SASTSubmissionStatusChoices.FAILED
+            submission.gateway_response = {
+                "Success": False,
+                "Errors": [f"Unexpected gateway response (HTTP {response.status_code})"],
+                "Data": None,
+                "StatusCode": response.status_code,
+                "RawResponse": response.text,
+            }
+            submission.save(
+                update_fields=["status", "gateway_payload", "gateway_response", "modified_date"]
+            )
             return submission
 
         data = response_data.get("Data") or {}
@@ -80,21 +123,21 @@ class GatewayService:
             ),
         )
 
+        submission.gateway_response = response_data
         if result.success:
             submission.status = SASTSubmissionStatusChoices.SUBMITTED
             submission.submitted_at = timezone.now()
-            submission.errors = []
             if result.data:
                 submission.hmis_id = result.data.hmis_id or submission.hmis_id
         else:
             submission.status = SASTSubmissionStatusChoices.FAILED
-            submission.errors = result.errors
 
         submission.save(
             update_fields=[
                 "status",
                 "submitted_at",
-                "errors",
+                "gateway_payload",
+                "gateway_response",
                 "hmis_id",
                 "modified_date",
             ]

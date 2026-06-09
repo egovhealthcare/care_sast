@@ -42,14 +42,14 @@ class CallbackViewSet(EMRBaseViewSet):
 
         submission.hmis_id = body.hmis_id
         submission.ab_ark_id = body.ab_ark_id
-        submission.response = body.model_dump(mode="json")
+        submission.callback_response = body.model_dump(mode="json")
         submission.status = SASTSubmissionStatusChoices.COMPLETED
         submission.completed_at = timezone.now()
         submission.save(
             update_fields=[
                 "hmis_id",
                 "ab_ark_id",
-                "response",
+                "callback_response",
                 "status",
                 "completed_at",
                 "modified_date",
