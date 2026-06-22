@@ -49,6 +49,7 @@ class SASTSubmissionPayloadSpec(BaseModel):
     patient_country: str = Field(serialization_alias="PatientCountry")
     pincode: str = Field(serialization_alias="Pincode")
     insurance_code: str | None = Field(default=None, serialization_alias="Insurance_Code")
+    scheme_id: str | None = Field(default=None, serialization_alias="Schemeid")
     referral_type: str = Field(serialization_alias="ReferalType")
     date_of_referral: date | None = Field(default=None, serialization_alias="Date_of_Referral")
     referral_id: str | None = Field(default=None, serialization_alias="ReferalId")
